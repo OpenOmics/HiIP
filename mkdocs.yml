@@ -1,13 +1,13 @@
 # Project Information
-site_name: baseline
+site_name: HiIP
 site_author: Skyler Kuhn
 site_description: >-
-  An awesome OpenOmics baseline pipeline
+  An awesome OpenOmics HiIP pipeline
 
 # Repository
-repo_name: OpenOmics/baseline
-repo_url: https://github.com/OpenOmics/baseline
-edit_uri: https://github.com/OpenOmics/baseline/edit/main/docs/
+repo_name: OpenOmics/HiIP
+repo_url: https://github.com/OpenOmics/HiIP
+edit_uri: https://github.com/OpenOmics/HiIP/edit/main/docs/
 
 # Extra
 extra_css:
@@ -98,10 +98,10 @@ markdown_extensions:
 nav:
   - About: index.md
   - Commands: 
-    - baseline run: usage/run.md
-    - baseline unlock: usage/unlock.md
-    - baseline install: usage/install.md
-    - baseline cache: usage/cache.md
+    - HiIP run: usage/run.md
+    - HiIP unlock: usage/unlock.md
+    - HiIP install: usage/install.md
+    - HiIP cache: usage/cache.md
   - FAQ:
     - General Questions: faq/questions.md
   - License: license.md
