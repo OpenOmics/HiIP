@@ -59,7 +59,7 @@ __authors__ = 'Skyler Kuhn'
 __email__ = 'skyler.kuhn@nih.gov'
 __home__  =  os.path.dirname(os.path.abspath(__file__))
 _name = os.path.basename(sys.argv[0])
-_description = 'An awesome HiChIP pipeline'
+_description = 'An awesome Hi-C + ChIP sequencing pipeline.'
 
 
 def unlock(sub_args):
