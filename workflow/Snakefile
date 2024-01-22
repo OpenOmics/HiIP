@@ -16,10 +16,62 @@ from scripts.common import (
 )
 
 
+# Global workflow variables
+configfile: "config.json"
+samples  = config['samples']
+workpath = config['project']['workpath']
+tmpdir = config['options']['tmp_dir']
+genome = config['options']['genome']         # Reference genome of a set of samples
+
+
+# Read in resource information,
+# containing information about 
+# threads, mem, walltimes, etc.
+# TODO: Add handler for when the
+# mode is set to local.
+with open(join('config', 'cluster.json')) as fh:
+    cluster = json.load(fh)
+
+
 # Final ouput files of the pipeline
 rule all:
     input:
-        []
+        # FastQC (before trimming)
+        expand(
+            join(workpath,"fastQC","{name}.R1_fastqc.html"), 
+            name=samples
+        ),
+
+
+rule fastqc:
+    """
+    Quality-control step to assess sequencing quality of the raw data after removing
+    adapter sequences. This step is run after trim_pe rule. FastQC is run after adapter
+    trimming to evalute if the adapter sequences were properly removed.
+    @Input:
+        Trimmed FastQ files (scatter)
+    @Output:
+        Trimmed FastQC reports and zip file containing data quality information
+    """
+    input:
+        R1=join(workpath,"{name}.R1.fastq.gz"),
+        R2=join(workpath,"{name}.R2.fastq.gz"),
+    output:
+        join(workpath,'fastQC',"{name}.R1_fastqc.html"),
+        join(workpath,'fastQC',"{name}.R2_fastqc.html"),
+    params:
+        rname='fastqc',
+        outdir=join(workpath,"fastQC"),
+    envmodules: 
+        config['tools']['fastqc']
+    threads:
+        int(allocated("threads", "fastqc", cluster))
+    shell: """
+    fastqc \\
+        {input.R1} {input.R2} \\
+        -t {threads} \\
+        -o {params.outdir}
+    """
 
 
 # Import rules 

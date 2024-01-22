@@ -245,14 +245,15 @@ def parsed_arguments(name, description):
                 [--sif-cache SIF_CACHE] [--singularity-cache SINGULARITY_CACHE] \\
                 [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] \\
                 --input INPUT [INPUT ...] \\
-                --output OUTPUT
+                --output OUTPUT \\
+                --genome GENOME
 
         Optional arguments are shown in square brackets above.
 
         {3}{4}Description:{5}
           To run the HiChIP pipeline name with your data raw data, please provide a 
-        space seperated list of FastQ (globbing is supported) and an output directory 
-        to store results.
+        space seperated list of FastQ (globbing is supported), an output directory 
+        to store results and a reference genome for alignment.
 
         {3}{4}Required arguments:{5}
           --input INPUT [INPUT ...]
@@ -269,6 +270,14 @@ def parsed_arguments(name, description):
                                 provided working directory has not been initialized,
                                 it will be created automatically.
                                   Example: --output /data/$USER/output
+
+          --genome GENOME       Reference genome. This option defines the reference
+                                genome of the samples. {2} does comes bundled with
+                                prebuilt reference files from GENCODE for human and 
+                                mouse samples. Select one of the following options:
+                                    • hg38
+                                    • mm10
+                                  Example: --genome hg38
 
         {3}{4}Analysis options:{5}
           ...coming soon!
@@ -401,6 +410,15 @@ def parsed_arguments(name, description):
         '--output',
         type = lambda option: os.path.abspath(os.path.expanduser(option)),
         required = True,
+        help = argparse.SUPPRESS
+    )
+
+    # Reference genome
+    subparser_run.add_argument(
+        '--genome',
+        required = True,
+        type = str,
+        choices = ['hg38', 'mm10'],
         help = argparse.SUPPRESS
     )
 
