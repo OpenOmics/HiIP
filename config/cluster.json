@@ -2,11 +2,18 @@
     "__default__": {
         "threads": "4",
         "mem": "8g",
-        "time": "0-04:00:00"
+        "time": "0-04:00:00",
+        "gres": "lscratch:32"
     },
     "fastqc": {
         "threads": "8",
         "mem": "32g",
         "time": "0-12:00:00"
+    },
+    "align": {
+        "threads": "16",
+        "mem": "64g",
+        "time": "0-12:00:00",
+        "gres": "lscratch:250"
     }
 }

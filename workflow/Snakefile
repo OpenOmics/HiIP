@@ -37,21 +37,20 @@ with open(join('config', 'cluster.json')) as fh:
 rule all:
     input:
         # FastQC (before trimming)
-        expand(
-            join(workpath,"fastQC","{name}.R1_fastqc.html"), 
-            name=samples
-        ),
+        expand(join(workpath,"fastQC","{name}.R1_fastqc.html"), name=samples),
+        expand(join(workpath,"Aligned","{name}.mappedPE.bam"), name=samples),
+
 
 
 rule fastqc:
     """
-    Quality-control step to assess sequencing quality of the raw data after removing
-    adapter sequences. This step is run after trim_pe rule. FastQC is run after adapter
-    trimming to evalute if the adapter sequences were properly removed.
+    Quality-control step to assess sequencing quality of the raw data prior removing
+    adapter sequences. FastQC generates a set of basic statistics to identify problems
+    that can arise during sequencing or library preparation.
     @Input:
-        Trimmed FastQ files (scatter)
+        FastQ files (scatter)
     @Output:
-        Trimmed FastQC reports and zip file containing data quality information
+        FastQC reports and zip file containing data quality information
     """
     input:
         R1=join(workpath,"{name}.R1.fastq.gz"),
@@ -73,6 +72,57 @@ rule fastqc:
         -o {params.outdir}
     """
 
+rule align:
+    input:
+        R1=join(workpath,"{name}.R1.fastq.gz"),
+        R2=join(workpath,"{name}.R2.fastq.gz"),
+    output:
+        DedupStats=join(workpath,"QC","{name}.dedupStats.txt"),
+	Pairs=join(workpath,"Aligned","{name}.mapped.pairs"),
+        bam=join(workpath,"Aligned","{name}.mappedPE.bam"),
+    params:
+        rname='align',
+        bwaref=config['references'][genome]['bwa'],
+	reflen=config['references'][genome]['reflen'],
+        tmpdir=tmpdir,
+        sample="{name}",
+    envmodules:
+        config['tools']['bwa'],
+        config['tools']['pairtools'],
+        config['tools']['samtools'],
+    threads:
+        int(allocated("threads", "align", cluster))
+    shell: """
+
+    # Setups temporary directory for
+    # intermediate files with built-in 
+    # mechanism for deletion on exit
+    if [ ! -d "{params.tmpdir}" ]; then mkdir -p "{params.tmpdir}"; fi
+    tmp=$(mktemp -d -p "{params.tmpdir}")
+    trap 'rm -rf "${{tmp}}"' EXIT
+
+    bwa mem -5SP -T0 -t{threads} {params.bwaref} {input.R1} {input.R2} \\
+            -o ${{tmp}}/{params.sample}.aligned.sam
+
+    pairtools parse --min-mapq 40 --walks-policy 5unique --max-inter-align-gap 30 \\
+          --nproc-in {threads} --nproc-out {threads} --chroms-path {params.reflen} \\
+          ${{tmp}}/{params.sample}.aligned.sam > ${{tmp}}/{params.sample}.parsed.pairsam
+
+    pairtools sort --nproc {threads} --tmpdir=${{tmp}} \\
+          ${{tmp}}/{params.sample}.parsed.pairsam > ${{tmp}}/{params.sample}.sorted.pairsam
+
+    pairtools dedup --nproc-in {threads} --nproc-out {threads} --mark-dups \\
+         --output-stats {output.DedupStats} \\
+         --output ${{tmp}}/{params.sample}.dedup.pairsam ${{tmp}}/{params.sample}.sorted.pairsam
+
+    pairtools split --nproc-in {threads} --nproc-out {threads} --output-pairs {output.Pairs} \\
+         --output-sam ${{tmp}}/{params.sample}.unsorted.bam ${{tmp}}/{params.sample}.dedup.pairsam
+
+    samtools sort -@{threads} -T ${{tmp}}/{params.sample}.tmp.bam \\
+         -o {output.bam} ${{tmp}}/{params.sample}.unsorted.bam
+
+   samtools index {output.bam}
+   """
 
 # Import rules 
 include: join("rules", "common.smk")

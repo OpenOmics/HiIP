@@ -1,6 +1,12 @@
 {
     "references": {
-        "hg38": {},
-        "mm10": {}
+        "hg38": {
+            "bwa": "/data/OpenOmics/references/chrom-seek/hg38_basic/indexes/hg38",
+            "reflen": "/data/OpenOmics/references/chrom-seek/hg38_basic/indexes/hg38.fa.sizes"
+        },
+        "mm10": {
+            "bwa": "/data/OpenOmics/references/chrom-seek/mm10_basic/indexes/mm10",
+            "reflen": "/data/OpenOmics/references/chrom-seek/mm10_basic/indexes/mm10.fa.sizes"
+        }
     }
 }
