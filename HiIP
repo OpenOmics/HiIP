@@ -379,6 +379,8 @@ def parsed_arguments(name, description):
           ./{0} run --input .tests/*.R?.fastq.gz \\
                          --output /data/$USER/output \\
                          --mode slurm \\
+                         --genome hg38 \\
+                         --chip-peaks .tests/ENCFF017XLW.bed \\
                          --dry-run
 
           # Step 2B.) Run the {0} pipeline
@@ -387,6 +389,8 @@ def parsed_arguments(name, description):
           # the pipeline in this mode.
           ./{0} run --input .tests/*.R?.fastq.gz \\
                          --output /data/$USER/output \\
+                         --genome hg38 \\
+                         --chip-peaks .tests/ENCFF017XLW.bed \\
                          --mode slurm
 
         {2}{3}Version:{4}
