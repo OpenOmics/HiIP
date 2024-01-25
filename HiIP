@@ -246,7 +246,8 @@ def parsed_arguments(name, description):
                 [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] \\
                 --input INPUT [INPUT ...] \\
                 --output OUTPUT \\
-                --genome GENOME
+                --genome GENOME \\
+                --peak-calls PEAK_CALLS
 
         Optional arguments are shown in square brackets above.
 
@@ -278,6 +279,15 @@ def parsed_arguments(name, description):
                                     • hg38
                                     • mm10
                                   Example: --genome hg38
+
+          --chip-peaks ChIP_PEAKS
+                                Path to peak calls from ChIP-seq experiment. This can
+                                be ChIP-seq peak calls from your own experiment or from
+                                a public database like ENCODE. File formats accepted are
+                                BED, narrowPeak, and broadPeak. Please see this link for
+                                more information about this input file:
+                                hichip.readthedocs.io/en/latest/library_qc.html#cenrich
+                                  Example: --chip-peaks ENCFF017XLW.bed
 
         {3}{4}Analysis options:{5}
           ...coming soon!
@@ -419,6 +429,17 @@ def parsed_arguments(name, description):
         required = True,
         type = str,
         choices = ['hg38', 'mm10'],
+        help = argparse.SUPPRESS
+    )
+
+    # ChIP Peak Calls,
+    # See this link for provided examples:
+    # https://hichip.readthedocs.io/en/latest/data_sets.html#human-hg38-peak-files-from-encode-project
+    subparser_run.add_argument(
+        '--chip-peaks',
+        # Check if the file exists and if it is readable
+        type = lambda file: permissions(parser, file, os.R_OK),
+        required = True,
         help = argparse.SUPPRESS
     )
 
