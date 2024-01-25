@@ -22,6 +22,7 @@ samples  = config['samples']
 workpath = config['project']['workpath']
 tmpdir = config['options']['tmp_dir']
 genome = config['options']['genome']         # Reference genome of a set of samples
+chip_peaks = config['options']['chip_peaks'] # Peak calls from ChIP experiment
 
 
 # Read in resource information,
