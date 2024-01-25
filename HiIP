@@ -247,7 +247,7 @@ def parsed_arguments(name, description):
                 --input INPUT [INPUT ...] \\
                 --output OUTPUT \\
                 --genome GENOME \\
-                --peak-calls PEAK_CALLS
+                --chip-peaks ChIP_PEAKS
 
         Optional arguments are shown in square brackets above.
 
