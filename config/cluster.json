@@ -15,5 +15,14 @@
         "mem": "64g",
         "time": "0-12:00:00",
         "gres": "lscratch:250"
+    },
+    "peakQC": {
+        "threads": "16",
+        "mem": "64g"
+    },
+    "contactmap": {
+	"threads": "16",
+        "mem": "64g",
+        "time": "0-12:00:00"
     }
 }

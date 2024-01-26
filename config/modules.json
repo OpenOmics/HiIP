@@ -3,6 +3,8 @@
         "fastqc": "fastqc/0.11.9",
         "bwa": "bwa/0.7.17",
         "pairtools": "pairtools/1.0.2",
-	"samtools": "samtools/1.19"
+	"samtools": "samtools/1.19",
+	"bedtools": "bedtools/2.30.0",
+	"juicer": "juicer/1.6"
     }
 }

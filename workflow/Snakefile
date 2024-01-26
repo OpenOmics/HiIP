@@ -6,6 +6,7 @@ import os, sys, json
 # 3rd party imports from pypi
 from snakemake.workflow import workflow as wf_api
 from snakemake.utils import R
+import git
 
 # Local imports
 from scripts.common import (
@@ -24,6 +25,8 @@ tmpdir = config['options']['tmp_dir']
 genome = config['options']['genome']         # Reference genome of a set of samples
 chip_peaks = config['options']['chip_peaks'] # Peak calls from ChIP experiment
 
+if not os.path.isdir("HiChIPtools"):
+    git.Repo.clone_from("https://github.com/dovetail-genomics/HiChiP.git", "HiChIPtools")
 
 # Read in resource information,
 # containing information about 
@@ -37,11 +40,10 @@ with open(join('config', 'cluster.json')) as fh:
 # Final ouput files of the pipeline
 rule all:
     input:
-        # FastQC (before trimming)
         expand(join(workpath,"fastQC","{name}.R1_fastqc.html"), name=samples),
-        expand(join(workpath,"Aligned","{name}.mappedPE.bam"), name=samples),
-
-
+        expand(join(workpath,"QC","{name}.dedupStatsSimplify.txt"), name=samples),
+        expand(join(workpath,"QC","{name}.hichip_qc_metrics.txt"), name=samples),
+        expand(join(workpath,"Aligned","{name}.hic"), name=samples),
 
 rule fastqc:
     """
@@ -122,8 +124,86 @@ rule align:
     samtools sort -@{threads} -T ${{tmp}}/{params.sample}.tmp.bam \\
          -o {output.bam} ${{tmp}}/{params.sample}.unsorted.bam
 
-   samtools index {output.bam}
+    samtools index {output.bam}
+    """
+
+rule QC:
    """
+   Required packages: argparse, tabulate
+   """
+   input:
+       join(workpath,"QC","{name}.dedupStats.txt"),
+   output:
+       join(workpath,"QC","{name}.dedupStatsSimplify.txt"),
+   params:
+       rname='QC',
+       script=join(workpath,"HiChIPtools","get_qc.py"),
+   shell: """
+   python3 {params.script} -p {input} > {output}
+   """
+
+rule peakQC:
+   """
+   Required linux packages: getopts
+   Required python packages: argparse, pysam, numpy, pandas, tabulate, matplotlib, subprocess
+   """
+   input:
+      join(workpath,"Aligned","{name}.mappedPE.bam"),
+   output:
+      txt=join(workpath,"QC","{name}.hichip_qc_metrics.txt"),
+      png=join(workpath,"QC","{name}.enrichment_QC.png")
+   params:
+      rname='peakQC',
+      reflen=config['references'][genome]['reflen'],
+      sample="{name}",
+      bed=chip_peaks,
+      tmpdir=tmpdir,
+   envmodules:
+      config['tools']['bedtools'],
+      config['tools']['samtools']
+   threads:
+           int(allocated("threads", "peakQC", cluster))
+   shell: """
+    # Setups temporary directory for
+    # intermediate files with built-in 
+    # mechanism for deletion on exit
+    if [ ! -d "{params.tmpdir}" ]; then mkdir -p "{params.tmpdir}"; fi
+    tmp=$(mktemp -d -p "{params.tmpdir}")
+    trap 'rm -rf "${{tmp}}"' EXIT
+
+   grep --color=never '^#\|^chr[1-9]\\b\\|^chr1[0-9]\\b\\|^chr2[0-2]\\b\\|^chr[X,Y,M]\\b' {params.bed} > ${{tmp}}/tmp.bed
+   chmod +x {workpath}/HiChIPtools/enrichment_stats.sh
+   {workpath}/HiChIPtools/enrichment_stats.sh -g {params.reflen} -b {input} \
+                  -p ${{tmp}}/tmp.bed -t {threads} -x ${{tmp}}/{params.sample}
+   mv ${{tmp}}/{params.sample}_hichip_qc_metrics.txt {output.txt}
+
+   if [[ {params.bed} =~ (.*).narrowPeak ]]; then
+       python3 {workpath}/HiChIPtools/plot_chip_enrichment.py -bam {input} \
+                  -peaks ${{tmp}}/tmp.bed -output {output.png}
+   else
+       python3 {workpath}/HiChIPtools/plot_chip_enrichment_bed.py -bam {input} \
+                  -peaks ${{tmp}}/tmp.bed -output {output.png} 
+   fi
+   """
+
+rule contactmap:
+   input:
+      join(workpath,"Aligned","{name}.mapped.pairs"),
+   output:
+      join(workpath,"Aligned","{name}.hic"),
+   params:
+      rname='contactmap',
+      reflen=config['references'][genome]['reflen'],
+      memory=max(int(allocated("mem", "contactmap", cluster).lower().strip('g') ) - 2, 2) * 1000,
+   envmodules:
+      config['tools']['juicer'],
+   threads:
+      max(int(allocated("threads", "contactmap", cluster)) -2, 2)
+   shell: """
+   juicer_tools -Xmx{params.memory}m pre --threads {threads} {input} {output} {params.reflen}
+   """
+
+
 
 # Import rules 
 include: join("rules", "common.smk")
