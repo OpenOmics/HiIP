@@ -44,6 +44,7 @@ rule all:
         expand(join(workpath,"QC","{name}.dedupStatsSimplify.txt"), name=samples),
         expand(join(workpath,"QC","{name}.hichip_qc_metrics.txt"), name=samples),
         expand(join(workpath,"Aligned","{name}.hic"), name=samples),
+        expand(join(workpath,"FitHiChIP_out","{name}.interactions_FitHiC_Q0.01.bed"),name=samples),
 
 rule fastqc:
     """
@@ -202,6 +203,65 @@ rule contactmap:
    shell: """
    juicer_tools -Xmx{params.memory}m pre --threads {threads} {input} {output} {params.reflen}
    """
+
+rule makehicpro:
+   input:
+      join(workpath,"Aligned","{name}.mapped.pairs"),
+   output:
+      join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+   params:
+      rname='makehicpro',
+   shell: """
+   grep -v '#' {input} | awk -F"\t" '{{print $1"\t"$2"\t"$3"\t"$6"\t"$4"\t"$5"\t"$7}}' | gzip -c > {output}
+   """
+
+rule makeFitConfig:
+   input:
+      join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+   output:
+      join(workpath,"FitHiChIP_out","{name}.config"),
+   params:
+      rname='makeFitConfig',
+      inConfig=join(workpath,"config","configfile_BiasCorrection_CoverageBias"),
+      reflen=config['references'][genome]['reflen'],
+      outdir=join(workpath,"FitHiChIP_out"),
+      bed=chip_peaks,
+      sample="{name}",
+      CTCF="true",
+   shell: """
+     cp {params.inConfig} {output}
+     sed -i 's@ValidPairs=.*@ValidPairs={input}@g' {output}   
+     sed -i 's@PeakFile=.*@PeakFile={params.bed}@g' {output}
+     sed -i 's@OutDir=.*@OutDir={params.outdir}@g' {output}
+     sed -i 's@ChrSizeFile=.*@ChrSizeFile={params.reflen}@g' {output}
+     sed -i 's@PREFIX=.*@PREFIX={params.sample}@g' {output}
+
+     if ! {params.CTCF}; then
+        sed -i 's@IntType=.*@IntType=3@g' {output}
+     fi
+   """
+
+rule FitHiChIP:
+   input:
+      pairs=join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+      config=join(workpath,"FitHiChIP_out","{name}.config"),
+   output:
+      join(workpath,"FitHiChIP_out","{name}.interactions_FitHiC_Q0.01.bed"),
+   params:
+      rname='FitHiChIP',
+      runDir=join(workpath,"FitHiChIP"),
+   envmodules:
+      config['tools']['fithichip'],
+   shell: """
+     if [ ! -d "{params.runDir}" ]; then
+       mkdir {params.runDir}
+       cp -r $FITHICHIP_SRC/* {params.runDir}
+     fi
+
+     cd {params.runDir}
+     ./FitHiChIP_HiCPro.sh -C {input.config}
+   """
+
 
 
 

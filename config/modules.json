@@ -5,6 +5,7 @@
         "pairtools": "pairtools/1.0.2",
 	"samtools": "samtools/1.19",
 	"bedtools": "bedtools/2.30.0",
-	"juicer": "juicer/1.6"
+	"juicer": "juicer/1.6",
+	"fithichip": "fithichip/11.0"
     }
 }
