@@ -44,7 +44,7 @@ rule all:
         expand(join(workpath,"QC","{name}.dedupStatsSimplify.txt"), name=samples),
         expand(join(workpath,"QC","{name}.hichip_qc_metrics.txt"), name=samples),
         expand(join(workpath,"Aligned","{name}.hic"), name=samples),
-        expand(join(workpath,"FitHiChIP_out","{name}.interactions_FitHiC_Q0.01.bed"),name=samples),
+        expand(join(workpath,"FitHiChIP_out","{name}","Summary_results_FitHiChIP.html"),name=samples),
 
 rule fastqc:
     """
@@ -224,7 +224,7 @@ rule makeFitConfig:
       rname='makeFitConfig',
       inConfig=join(workpath,"config","configfile_BiasCorrection_CoverageBias"),
       reflen=config['references'][genome]['reflen'],
-      outdir=join(workpath,"FitHiChIP_out"),
+      outdir=join(workpath,"FitHiChIP_out","{name}"),
       bed=chip_peaks,
       sample="{name}",
       CTCF="true",
@@ -246,7 +246,7 @@ rule FitHiChIP:
       pairs=join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
       config=join(workpath,"FitHiChIP_out","{name}.config"),
    output:
-      join(workpath,"FitHiChIP_out","{name}.interactions_FitHiC_Q0.01.bed"),
+      join(workpath,"FitHiChIP_out","{name}","Summary_results_FitHiChIP.html"),
    params:
       rname='FitHiChIP',
       runDir=join(workpath,"FitHiChIP"),
