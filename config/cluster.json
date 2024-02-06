@@ -8,7 +8,8 @@
     "fastqc": {
         "threads": "8",
         "mem": "32g",
-        "time": "0-12:00:00"
+        "time": "0-12:00:00",
+        "gres": "lscratch:64"
     },
     "align": {
         "threads": "16",
