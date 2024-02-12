@@ -243,7 +243,7 @@ def parsed_arguments(name, description):
           $ {2} run [--help] \\
                 [--dry-run] [--job-name JOB_NAME] [--mode {{slurm,local}}] \\
                 [--sif-cache SIF_CACHE] [--singularity-cache SINGULARITY_CACHE] \\
-                [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] \\
+                [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] [--CTCF] \\
                 --input INPUT [INPUT ...] \\
                 --output OUTPUT \\
                 --genome GENOME \\
@@ -290,7 +290,13 @@ def parsed_arguments(name, description):
                                   Example: --chip-peaks ENCFF017XLW.bed
 
         {3}{4}Analysis options:{5}
-          ...coming soon!
+          --CTCF                Identify chromatin loops, i.e. CTCF-cohesin mediated 
+                                looping. Please provide this option if the IP was done on 
+                                CTCF or a cohesin subunit. Do NOT provide this option if 
+                                the IP was done on an enhancer or active promotor marker,
+                                i.e. H3K27ac or H3K4me3.
+                                  Default: False
+                                  Example: --CTCF
 
         {3}{4}Orchestration options:{5}
           --mode {{slurm,local}}  
@@ -381,6 +387,7 @@ def parsed_arguments(name, description):
                          --mode slurm \\
                          --genome hg38 \\
                          --chip-peaks .tests/ENCFF017XLW.bed \\
+                         --CTCF \\
                          --dry-run
 
           # Step 2B.) Run the {0} pipeline
@@ -391,6 +398,7 @@ def parsed_arguments(name, description):
                          --output /data/$USER/output \\
                          --genome hg38 \\
                          --chip-peaks .tests/ENCFF017XLW.bed \\
+                         --CTCF \\
                          --mode slurm
 
         {2}{3}Version:{4}
@@ -456,7 +464,15 @@ def parsed_arguments(name, description):
     )
     
     # Analysis options
-    # ... add here
+    # Identify chromatin loops. If provided,
+    # peak-to-peak calling is performed.
+    subparser_run.add_argument(
+        '--CTCF',
+        action = 'store_true',
+        required = False,
+        default = False,
+        help = argparse.SUPPRESS
+    )
 
     # Orchestration Options
     # Execution Method, run locally 

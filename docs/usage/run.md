@@ -5,22 +5,23 @@ The `HiIP` executable is composed of several inter-related sub commands. Please 
 
 This part of the documentation describes options and concepts for <code>HiIP <b>run</b></code> sub command in more detail. With minimal configuration, the **`run`** sub command enables you to start running HiIP pipeline. 
 
-Setting up the HiIP pipeline is fast and easy! In its most basic form, <code>HiIP <b>run</b></code> only has *two required inputs*.
+Setting up the HiIP pipeline is fast and easy! In its most basic form, <code>HiIP <b>run</b></code> only has *four required inputs*.
 
 ## 2. Synopsis
 ```text
 $ HiIP run [--help] \
-      [--mode {slurm,local}] [--job-name JOB_NAME] [--batch-id BATCH_ID] \
-      [--tmp-dir TMP_DIR] [--silent] [--sif-cache SIF_CACHE] \ 
-      [--singularity-cache SINGULARITY_CACHE] \
-      [--dry-run] [--threads THREADS] \
+      [--dry-run] [--job-name JOB_NAME] [--mode {slurm,local}] \
+      [--sif-cache SIF_CACHE] [--singularity-cache SINGULARITY_CACHE] \
+      [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] [--CTCF] \
       --input INPUT [INPUT ...] \
-      --output OUTPUT
+      --output OUTPUT \
+      --genome GENOME \
+      --chip-peaks ChIP_PEAKS
 ```
 
 The synopsis for each command shows its arguments and their usage. Optional arguments are shown in square brackets.
 
-A user **must** provide a list of FastQ (globbing is supported) to analyze via `--input` argument and an output directory to store results via `--output` argument.
+A user **must** provide a list of FastQ (globbing is supported) to analyze via `--input` argument, an output directory to store results via `--output` argument, a reference genome via the `--genome` option, and peakcalls from a ChIP-seq experiment via the `--chip-peaks` option.
 
 Use you can always use the `-h` option for information on a specific command. 
 
@@ -45,11 +46,35 @@ Each of the following arguments are required. Failure to provide a required argu
 > 
 > ***Example:*** `--output /data/$USER/HiIP_out`
 
+---  
+  `--genome GENOME`
+> **Reference genome.**   
+> *type: hg38 or mm10*
+>   
+> This option defines the reference genome of the samples. HiIP does comes bundled with prebuilt reference files from GENCODE for human and mouse samples. Please select from one of the following options: `hg38` or `mm10`.
+> 
+> ***Example:*** `--genome hg38`
+
+---  
+  `--chip-peaks ChIP_PEAKS`
+> **Peak calls from ChIP-seq experiment.**   
+> *type: file*
+>   
+> This can be ChIP-seq peak calls from your own experiment or from a public database like ENCODE. File formats accepted are BED, narrowPeak, and broadPeak. Please see this [link](hichip.readthedocs.io/en/latest/library_qc.html#cenrich) for more information about this input file.
+> 
+> ***Example:*** `--chip-peaks ENCFF017XLW.bed`
+
+
 ### 2.2 Analysis options
 
-Each of the following arguments are optional, and do not need to be provided. 
+  `--CTCF`            
+> **Identify chromatin loops.**  
+> *type: boolean flag*
+> 
+> Please provide this option if the IP was done on CTCF or a cohesin subunit. Do NOT provide this option if the IP was done on an enhancer or active promotor marker, i.e. H3K27ac or H3K4me3.
+>
+> ***Example:*** `--CTCF`
 
-...add non-required analysis options 
 
 ### 2.3 Orchestration options
 
@@ -161,6 +186,7 @@ module load singularity snakemake
 ./HiIP run --input .tests/*.R?.fastq.gz \
                   --output /data/$USER/output \
                   --mode slurm \
+                  --CTCF \
                   --dry-run
 
 # Step 2B.) Run the HiIP pipeline
@@ -169,5 +195,6 @@ module load singularity snakemake
 # the pipeline in this mode.
 ./HiIP run --input .tests/*.R?.fastq.gz \
                   --output /data/$USER/output \
-                  --mode slurm
+                  --mode slurm \
+                  --CTCF
 ```
