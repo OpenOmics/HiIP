@@ -70,6 +70,7 @@ Each of the following arguments are required. Failure to provide a required argu
   `--CTCF`            
 > **Identify chromatin loops.**  
 > *type: boolean flag*
+> *default: False*
 > 
 > Please provide this option if the IP was done on CTCF or a cohesin subunit. Do NOT provide this option if the IP was done on an enhancer or active promotor marker, i.e. H3K27ac or H3K4me3.
 >
