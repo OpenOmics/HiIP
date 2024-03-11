@@ -252,7 +252,8 @@ def parsed_arguments(name, description):
           $ {2} run [--help] \\
                 [--dry-run] [--job-name JOB_NAME] [--mode {{slurm,local}}] \\
                 [--sif-cache SIF_CACHE] [--singularity-cache SINGULARITY_CACHE] \\
-                [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] [--CTCF] \\
+                [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] \\
+                [--CTCF] [--groups GROUPS] \\
                 --input INPUT [INPUT ...] \\
                 --output OUTPUT \\
                 --genome GENOME \\
