@@ -24,6 +24,9 @@ workpath = config['project']['workpath']
 tmpdir = config['options']['tmp_dir']
 genome = config['options']['genome']         # Reference genome of a set of samples
 chip_peaks = config['options']['chip_peaks'] # Peak calls from ChIP experiment
+groupdata = config['project']['groups']
+
+groups = list(groupdata.keys())
 
 if not os.path.isdir("HiChIPtools"):
     git.Repo.clone_from("https://github.com/dovetail-genomics/HiChiP.git", "HiChIPtools")
@@ -45,6 +48,9 @@ rule all:
         expand(join(workpath,"QC","{name}.hichip_qc_metrics.txt"), name=samples),
         expand(join(workpath,"Aligned","{name}.hic"), name=samples),
         expand(join(workpath,"FitHiChIP_out","{name}","Summary_results_FitHiChIP.html"),name=samples),
+	expand(join(workpath,"AlignedReps","{group}.mapped.pairs"), group=groups),
+        expand(join(workpath,"AlignedReps","{group}.hic"), group=groups),
+        expand(join(workpath,"AlignedReps","HicProIn","{group}","{group}.hicpro_mapped.pairs.gz"),group=groups),
 
 rule fastqc:
     """
@@ -104,12 +110,14 @@ rule align:
         DedupStats=join(workpath,"QC","{name}.dedupStats.txt"),
 	Pairs=join(workpath,"Aligned","{name}.mapped.pairs"),
         bam=join(workpath,"Aligned","{name}.mappedPE.bam"),
+	dedupsam=join(workpath,"Aligned","{name}.dedup.pairsam.gz"),
     params:
         rname='align',
         bwaref=config['references'][genome]['bwa'],
 	reflen=config['references'][genome]['reflen'],
         tmpdir=tmpdir,
         sample="{name}",
+        dedupsam=join(workpath,"Aligned","{name}.dedup.pairsam"),
     envmodules:
         config['tools']['bwa'],
         config['tools']['pairtools'],
@@ -132,15 +140,23 @@ rule align:
           --nproc-in {threads} --nproc-out {threads} --chroms-path {params.reflen} \\
           ${{tmp}}/{params.sample}.aligned.sam > ${{tmp}}/{params.sample}.parsed.pairsam
 
+    rm ${{tmp}}/{params.sample}.aligned.sam
+
     pairtools sort --nproc {threads} --tmpdir=${{tmp}} \\
           ${{tmp}}/{params.sample}.parsed.pairsam > ${{tmp}}/{params.sample}.sorted.pairsam
 
+    rm ${{tmp}}/{params.sample}.parsed.pairsam
+
     pairtools dedup --nproc-in {threads} --nproc-out {threads} --mark-dups \\
          --output-stats {output.DedupStats} \\
-         --output ${{tmp}}/{params.sample}.dedup.pairsam ${{tmp}}/{params.sample}.sorted.pairsam
+         --output {params.dedupsam} ${{tmp}}/{params.sample}.sorted.pairsam
+
+    rm ${{tmp}}/{params.sample}.sorted.pairsam
 
     pairtools split --nproc-in {threads} --nproc-out {threads} --output-pairs {output.Pairs} \\
-         --output-sam ${{tmp}}/{params.sample}.unsorted.bam ${{tmp}}/{params.sample}.dedup.pairsam
+         --output-sam ${{tmp}}/{params.sample}.unsorted.bam {params.dedupsam}
+
+    gzip {params.dedupsam}
 
     samtools sort -@{threads} -T ${{tmp}}/{params.sample}.tmp.bam \\
          -o {output.bam} ${{tmp}}/{params.sample}.unsorted.bam
@@ -209,9 +225,9 @@ rule peakQC:
 
 rule contactmap:
    input:
-      join(workpath,"Aligned","{name}.mapped.pairs"),
+      join(workpath,"{alignDir}","{name}.mapped.pairs"),
    output:
-      join(workpath,"Aligned","{name}.hic"),
+      join(workpath,"{alignDir}","{name}.hic"),
    params:
       rname='contactmap',
       reflen=config['references'][genome]['reflen'],
@@ -226,9 +242,9 @@ rule contactmap:
 
 rule makehicpro:
    input:
-      join(workpath,"Aligned","{name}.mapped.pairs"),
+      join(workpath,"{alignDir}","{name}.mapped.pairs"),
    output:
-      join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+      join(workpath,"{alignDir}","HicProIn","{name}","{name}.hicpro_mapped.pairs.gz"),
    params:
       rname='makehicpro',
    shell: """
@@ -237,7 +253,7 @@ rule makehicpro:
 
 rule makeFitConfig:
    input:
-      join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+      join(workpath,"Aligned","HicProIn","{name}","{name}.hicpro_mapped.pairs.gz"),
    output:
       join(workpath,"FitHiChIP_out","{name}.config"),
    params:
@@ -258,12 +274,13 @@ rule makeFitConfig:
 
      if ! {params.CTCF}; then
         sed -i 's@IntType=.*@IntType=3@g' {output}
+        sed -i 's@LowDistThr=.*@LowDistThr=10000@g' {output}
      fi
    """
 
 rule FitHiChIP:
    input:
-      pairs=join(workpath,"Aligned","{name}.hicpro_mapped.pairs.gz"),
+      pairs=join(workpath,"Aligned","HicProIn","{name}","{name}.hicpro_mapped.pairs.gz"),
       config=join(workpath,"FitHiChIP_out","{name}.config"),
    output:
       join(workpath,"FitHiChIP_out","{name}","Summary_results_FitHiChIP.html"),
@@ -282,6 +299,45 @@ rule FitHiChIP:
      ./FitHiChIP_HiCPro.sh -C {input.config}
    """
 
+
+rule unzip:
+    input:
+       join(workpath,"Aligned","{name}.dedup.pairsam.gz")
+    output:
+       temp(join(workpath,"Aligned","{name}.dedup.pairsam"))
+    params:
+       rname='unzip'
+    shell: """
+       gunzip -k {input}
+    """
+
+rule mergeReps:
+    input:
+        pairsam=lambda w: expand(join(workpath,"Aligned","{name}.dedup.pairsam"), name=groupdata[w.group]),
+    output:
+        Pairs= join(workpath, "AlignedReps","{group}.mapped.pairs"),
+    params:
+        rname='mergeReps',
+        tmpdir=tmpdir,
+        sample="{group}",
+    envmodules:
+        config['tools']['pairtools'],
+    threads:
+        int(allocated("threads", "mergeReps", cluster))
+    shell: """
+
+    # Setups temporary directory for
+    # intermediate files with built-in 
+    # mechanism for deletion on exit
+    if [ ! -d "{params.tmpdir}" ]; then mkdir -p "{params.tmpdir}"; fi
+    tmp=$(mktemp -d -p "{params.tmpdir}")
+    trap 'rm -rf "${{tmp}}"' EXIT
+
+    pairtools merge -o ${{tmp}}/{params.sample}.dedup.pairsam {input.pairsam}
+    
+    pairtools split --nproc-in {threads} --nproc-out {threads} --output-pairs {output.Pairs} \\
+         --output-sam ${{tmp}}/{params.sample}.unsorted.bam ${{tmp}}/{params.sample}.dedup.pairsam
+    """
 
 
 
